@@ -1,0 +1,14 @@
+{
+  "name": "sol-eth-token-watch-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "once": "node src/index.js --once",
+    "demo": "node src/index.js --demo --once"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
