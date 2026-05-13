@@ -52,17 +52,10 @@ npm run demo
 
 The workflow at `.github/workflows/token-watch.yml` runs every 5 minutes and can also be started manually from the Actions tab.
 
-Add these repository secrets:
+Add this repository secret:
 
 ```text
 TELEGRAM_BOT_TOKEN
-TELEGRAM_CHAT_ID
-```
-
-For this Telegram chat, the detected `TELEGRAM_CHAT_ID` is:
-
-```text
-12204622
 ```
 
 Do not commit the bot token to the repository. Store it only as a GitHub Actions secret.
