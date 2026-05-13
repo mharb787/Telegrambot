@@ -4,6 +4,7 @@ import { scoreToken, shouldAlert, snapshotFromPair } from "./metrics.js";
 import { createStore } from "./store.js";
 import { writeChart } from "./chart.js";
 import { sendTelegramAlert } from "./telegram.js";
+import { analyzeHolders } from "./holders.js";
 
 const config = getConfig();
 const store = await createStore(config.dataDir);
@@ -44,20 +45,22 @@ async function scanOnce() {
       store.addSnapshot(snapshot);
 
       const history = store.getSnapshots(chainId, snapshot.tokenAddress);
-      const scores = scoreToken(snapshot, history);
+      const holderAnalysis = await analyzeHolders(snapshot);
+      const scores = scoreToken(snapshot, history, holderAnalysis);
       const chartFile = await writeChart(config.chartDir, { ...snapshot, classification: scores.classification }, history, scores);
 
       if (
         shouldAlert(snapshot, scores, config) &&
         store.canAlert(chainId, snapshot.tokenAddress, scores.classification, config.alertCooldownMinutes)
       ) {
-        const sent = await sendTelegramAlert(config, snapshot, scores, chartFile);
+        const sent = await sendTelegramAlert(config, snapshot, scores, chartFile, holderAnalysis);
         if (sent) {
           store.markAlert(chainId, snapshot.tokenAddress, scores.classification);
           console.log(`Alert sent for ${snapshot.symbol} (${chainId}).`);
         }
       } else {
-        console.log(`${snapshot.symbol} ${chainId}: survival=${scores.survivalScore}, exchange=${scores.exchangePotential}, risk=${scores.rugRisk}`);
+        const holderLine = holderAnalysis.available ? `, topNonPool=${holderAnalysis.largestNonPoolPct}%` : "";
+        console.log(`${snapshot.symbol} ${chainId}: survival=${scores.survivalScore}, exchange=${scores.exchangePotential}, risk=${scores.rugRisk}${holderLine}`);
       }
     }
   }

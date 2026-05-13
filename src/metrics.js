@@ -23,13 +23,14 @@ export function snapshotFromPair(pair, profile) {
     buys1h: number(pair.txns?.h1?.buys),
     sells1h: number(pair.txns?.h1?.sells),
     pairCreatedAt: pair.pairCreatedAt ? new Date(pair.pairCreatedAt).toISOString() : null,
+    poolBaseAmount: number(pair.liquidity?.base),
     socialLinks: countSocialLinks(pair, profile),
     boostActive: number(pair.boosts?.active) + number(profile.boostAmount),
     boostTotalAmount: number(profile.boostTotalAmount)
   };
 }
 
-export function scoreToken(snapshot, history) {
+export function scoreToken(snapshot, history, holderAnalysis = null) {
   const ageHours = snapshot.pairCreatedAt
     ? Math.max(0.1, (Date.now() - Date.parse(snapshot.pairCreatedAt)) / 3_600_000)
     : 999;
@@ -64,7 +65,8 @@ export function scoreToken(snapshot, history) {
     (fdvLiquidity > 80 ? 20 : fdvLiquidity > 40 ? 10 : 0) +
     (ageHours < 2 ? 10 : 0) +
     (volumeLiquidity > 5 ? 10 : 0) -
-    Math.min(socialScore, 10),
+    Math.min(socialScore, 10) +
+    concentrationRiskPenalty(holderAnalysis),
     0,
     100
   );
@@ -80,6 +82,15 @@ export function scoreToken(snapshot, history) {
     ageHours: round(ageHours),
     classification: classify(survivalScore, exchangePotential, rugRisk)
   };
+}
+
+function concentrationRiskPenalty(holderAnalysis) {
+  if (!holderAnalysis?.available) return 0;
+  const pct = holderAnalysis.largestNonPoolPct || holderAnalysis.largestPct || 0;
+  if (pct >= 50) return 35;
+  if (pct >= 20) return 20;
+  if (pct >= 10) return 10;
+  return 0;
 }
 
 export function shouldAlert(snapshot, scores, config) {

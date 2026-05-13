@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-export async function sendTelegramAlert(config, snapshot, scores, chartFile) {
+export async function sendTelegramAlert(config, snapshot, scores, chartFile, holderAnalysis = null) {
   if (!config.telegramBotToken || !config.telegramChatId) {
     console.log("Telegram is not configured; alert skipped.");
     return false;
@@ -13,11 +13,21 @@ export async function sendTelegramAlert(config, snapshot, scores, chartFile) {
     `Survival: ${scores.survivalScore}/100 | Exchange: ${scores.exchangePotential}/100 | Risk: ${scores.rugRisk}/100`,
     `Liquidity: ${usd(snapshot.liquidityUsd)} | MC/FDV: ${usd(snapshot.marketCap || snapshot.fdv)} | 1H Vol: ${usd(snapshot.volume1h)}`,
     `Buy ratio: ${Math.round(scores.buyRatio * 100)}% | Age: ${scores.ageHours}h`,
+    holderSummary(holderAnalysis),
     snapshot.url
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 
   await sendDocument(config, chartFile, caption);
   return true;
+}
+
+function holderSummary(holderAnalysis) {
+  if (!holderAnalysis?.available) return "Holders: unavailable";
+  return [
+    `Holders: top non-pool ${holderAnalysis.largestNonPoolPct}%`,
+    `pool ${holderAnalysis.poolPct}%`,
+    `risk ${holderAnalysis.concentrationRisk}`
+  ].join(" | ");
 }
 
 async function sendDocument(config, file, caption) {
